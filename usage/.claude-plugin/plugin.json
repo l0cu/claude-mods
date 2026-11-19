@@ -1,0 +1,10 @@
+{
+  "name": "usage",
+  "version": "0.6.4",
+  "description": "A band above the prompt with the 5-hour (orange) and weekly (blue) usage bars and, while its promotion runs, Fable's own weekly bar (purple), each with the time left until it renews; drawn as an SVG on VS Code and Claude Code Desktop, as text on the terminal",
+  "author": {
+    "name": "l0cu"
+  },
+  "license": "MIT",
+  "types": "./types/index.d.ts"
+}
