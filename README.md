@@ -1,5 +1,7 @@
 # claude-mods
 
+**English** · [Català](README.ca.md)
+
 A Claude Code plugin marketplace with one plugin so far: **usage**.
 
 ## usage
