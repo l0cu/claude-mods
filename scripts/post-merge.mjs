@@ -1,6 +1,9 @@
 // The mechanical steps after a pull request is merged (.claude/skills/post-merge/SKILL.md):
 // updates main, deletes the local branch, prunes remote branches that are gone, and reports the
-// plugin version now on main and whether the workflow has tagged it. Changes nothing on GitHub.
+// plugin version now on main and whether the workflow has tagged it, and whether this machine's
+// Claude Code has the marketplace from the GitHub repository and at which commit (Claude Code's
+// known_marketplaces.json and installed_plugins.json). Changes nothing on GitHub, nor in Claude
+// Code's files.
 // Ported from l0cu/trito's scripts/post-merge.mjs, without its issue, board and Actions-minutes
 // steps: this repository has no issue board, and Actions are free on a public repository.
 // Usage: node scripts/post-merge.mjs [<branch>]   (default: the current branch)
@@ -8,6 +11,8 @@
 
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const PLUGIN = 'usage';
 
@@ -64,4 +69,44 @@ const tag = `${PLUGIN}--v${version}`;
 gitFails(['fetch', '--quiet', '--tags', 'origin']);
 const tagged = gitFails(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`]) === null;
 console.log(`\n${PLUGIN} ${version} on main; tag ${tag}: ${tagged ? 'there' : 'not yet (the workflow adds it after the merge)'}`);
-console.log('This marketplace is read from this folder: /reload-plugins in each open session loads it.');
+
+// 3. Where this machine's Claude Code reads the marketplace from, and what it has installed.
+
+const pluginsDir = path.join(process.env.CLAUDE_CONFIG_DIR ?? path.join(os.homedir(), '.claude'), 'plugins');
+
+function readJson(file) {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(pluginsDir, file), 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+const marketplaceName = JSON.parse(fs.readFileSync('.claude-plugin/marketplace.json', 'utf8')).name;
+const entry = readJson('known_marketplaces.json')?.[marketplaceName];
+const installed = readJson('installed_plugins.json')?.plugins?.[`${PLUGIN}@${marketplaceName}`]?.map((i) => i.version) ?? [];
+const installedNote = installed.length ? `installed: ${PLUGIN} ${[...new Set(installed)].join(', ')}` : `${PLUGIN} not installed`;
+// The plugin is installed from the GitHub repository, never from a local folder.
+const REPO = 'l0cu/claude-mods';
+const source = entry?.source ?? {};
+const fromRepo = source.source === 'github' && source.repo?.toLowerCase() === REPO;
+
+if (!entry) {
+  console.log(`Marketplace ${marketplaceName} is not added on this machine (${installedNote}): /plugin marketplace add ${REPO}.`);
+} else if (!fromRepo) {
+  const from = source.repo ?? source.url ?? source.path ?? source.source ?? 'an unknown source';
+  console.log(`Marketplace ${marketplaceName} comes from ${from}, not from the repository ${REPO} (${installedNote}).`);
+  console.log(`Remove it (/plugin marketplace remove ${marketplaceName}) and add it from the repository: /plugin marketplace add ${REPO}.`);
+} else {
+  const at = entry.installLocation && gitFails(['-C', entry.installLocation, 'rev-parse', 'HEAD']) === null
+    ? git('-C', entry.installLocation, 'rev-parse', 'HEAD')
+    : null;
+  const current = at === git('rev-parse', 'HEAD');
+  console.log(`Marketplace ${marketplaceName} comes from ${REPO}, its copy at ${at ? at.slice(0, 7) : 'an unknown commit'}${current ? ', the same as main' : ', not main yet'} (${installedNote}).`);
+  if (!current) {
+    console.log(entry.autoUpdate
+      ? `Auto-update is on: its next pass brings it in, or /plugin marketplace update ${marketplaceName} does it now.`
+      : `Auto-update is off: /plugin marketplace update ${marketplaceName} brings it in.`);
+  }
+  console.log('Then /reload-plugins in each open session loads it.');
+}
