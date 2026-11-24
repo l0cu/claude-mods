@@ -3,6 +3,9 @@
   "owner": {
     "name": "l0cu"
   },
+  "metadata": {
+    "description": "Mods for Claude Code: changes to its interface, such as a usage band above the prompt"
+  },
   "plugins": [
     {
       "name": "usage",

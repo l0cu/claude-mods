@@ -1,6 +1,12 @@
 # Changelog
 
-Versions of the `usage` plugin. Each release is tagged `usage-v<version>`.
+Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
+(`usage-v<version>` up to 0.6.4).
+
+## usage 0.6.5
+
+- Manifest: homepage, repository and support links, for the plugin directory
+  listing. No change to the band.
 
 ## usage 0.6.4
 
