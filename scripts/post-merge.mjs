@@ -1,6 +1,7 @@
 // The mechanical steps after a pull request is merged (.claude/skills/post-merge/SKILL.md):
 // updates main, deletes the local branch, prunes remote branches that are gone, and reports the
-// plugin version now on main and whether the workflow has tagged it, and whether this machine's
+// plugin version on main in the GitHub repository (read with gh, not from this checkout) and
+// whether the workflow has tagged it, and whether this machine's
 // Claude Code has the marketplace from the GitHub repository and at which commit (Claude Code's
 // known_marketplaces.json and installed_plugins.json). Changes nothing on GitHub, nor in Claude
 // Code's files.
@@ -62,13 +63,33 @@ if (gitFails(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]) !== n
   console.log(`Deleted branch ${branch}.`);
 }
 
-// 2. The plugin version on main, and its tag (the workflow adds it a minute or so after the merge).
+// 2. The plugin on main in the GitHub repository, which is what users install, and its tag (the
+// workflow adds it a minute or so after the merge). Read from GitHub, not from this checkout.
 
-const { version } = JSON.parse(fs.readFileSync(`${PLUGIN}/.claude-plugin/plugin.json`, 'utf8'));
+// The plugin is installed from the GitHub repository, never from a local folder.
+const REPO = 'l0cu/claude-mods';
+
+function gh(...args) {
+  return execFileSync('gh', ['api', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
+}
+
+let mainSha;
+let version;
+try {
+  mainSha = gh(`repos/${REPO}/commits/main`, '--jq', '.sha');
+  const manifest = Buffer.from(gh(`repos/${REPO}/contents/${PLUGIN}/.claude-plugin/plugin.json?ref=${mainSha}`, '--jq', '.content'), 'base64');
+  ({ version } = JSON.parse(manifest.toString('utf8')));
+} catch (err) {
+  fail(`Could not read main from GitHub (${REPO}):\n${(err.stderr || err.message).trim()}`);
+}
 const tag = `${PLUGIN}--v${version}`;
-gitFails(['fetch', '--quiet', '--tags', 'origin']);
-const tagged = gitFails(['rev-parse', '--verify', '--quiet', `refs/tags/${tag}`]) === null;
-console.log(`\n${PLUGIN} ${version} on main; tag ${tag}: ${tagged ? 'there' : 'not yet (the workflow adds it after the merge)'}`);
+let tagged = true;
+try {
+  gh(`repos/${REPO}/git/ref/tags/${tag}`, '--silent');
+} catch {
+  tagged = false;
+}
+console.log(`\nGitHub ${REPO} main is at ${mainSha.slice(0, 7)}: ${PLUGIN} ${version}; tag ${tag}: ${tagged ? 'there' : 'not yet (the workflow adds it after the merge)'}`);
 
 // 3. Where this machine's Claude Code reads the marketplace from, and what it has installed.
 
@@ -86,8 +107,6 @@ const marketplaceName = JSON.parse(fs.readFileSync('.claude-plugin/marketplace.j
 const entry = readJson('known_marketplaces.json')?.[marketplaceName];
 const installed = readJson('installed_plugins.json')?.plugins?.[`${PLUGIN}@${marketplaceName}`]?.map((i) => i.version) ?? [];
 const installedNote = installed.length ? `installed: ${PLUGIN} ${[...new Set(installed)].join(', ')}` : `${PLUGIN} not installed`;
-// The plugin is installed from the GitHub repository, never from a local folder.
-const REPO = 'l0cu/claude-mods';
 const source = entry?.source ?? {};
 const fromRepo = source.source === 'github' && source.repo?.toLowerCase() === REPO;
 
@@ -101,12 +120,18 @@ if (!entry) {
   const at = entry.installLocation && gitFails(['-C', entry.installLocation, 'rev-parse', 'HEAD']) === null
     ? git('-C', entry.installLocation, 'rev-parse', 'HEAD')
     : null;
-  const current = at === git('rev-parse', 'HEAD');
-  console.log(`Marketplace ${marketplaceName} comes from ${REPO}, its copy at ${at ? at.slice(0, 7) : 'an unknown commit'}${current ? ', the same as main' : ', not main yet'} (${installedNote}).`);
+  const current = at === mainSha;
+  console.log(`Marketplace ${marketplaceName} comes from ${REPO}, Claude Code's copy at ${at ? at.slice(0, 7) : 'an unknown commit'}${current ? ', the same as GitHub main' : ', not GitHub main yet'} (${installedNote}).`);
   if (!current) {
-    console.log(entry.autoUpdate
-      ? `Auto-update is on: its next pass brings it in, or /plugin marketplace update ${marketplaceName} does it now.`
-      : `Auto-update is off: /plugin marketplace update ${marketplaceName} brings it in.`);
+    // Claude Code's plugin auto-update runs once, when a Claude Code process starts, and skips
+    // itself under DISABLE_AUTOUPDATER (which Claude Code Desktop sets for its sessions) unless
+    // FORCE_AUTOUPDATE_PLUGINS is set.
+    const env = process.env;
+    const skipped = (env.DISABLE_AUTOUPDATER || env.DISABLE_UPDATES) && !env.FORCE_AUTOUPDATE_PLUGINS;
+    console.log(!entry.autoUpdate
+      ? `Auto-update is off for ${marketplaceName}.`
+      : skipped
+        ? 'Auto-update is on for the marketplace, but this environment skips the plugin pass (DISABLE_AUTOUPDATER set, FORCE_AUTOUPDATE_PLUGINS not).'
+        : 'Auto-update is on: the plugin pass runs when a Claude Code session starts.');
   }
-  console.log('Then /reload-plugins in each open session loads it.');
 }
