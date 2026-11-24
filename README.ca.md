@@ -30,7 +30,8 @@ canviar.
   en obrir la sessió i després com a molt un cop cada cinc minuts. No envia cap
   cos; la credencial de la sessió l'afegeix Claude Code
   (`$.session.authorize`), i el plugin no la veu ni la desa. No envia res enlloc
-  més.
+  més, i `plugin.json` declara `api.anthropic.com` com a únic host
+  (`network.hosts`).
 - **Dades que guarda:** només les últimes lectures (les finestres d'ús, la fila
   setmanal de Fable i l'hora actual), a l'estat de Claude Code per al plugin
   (`usage.limits`, `usage.model`, `usage.now`). El plugin no escriu cap fitxer

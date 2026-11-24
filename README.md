@@ -25,7 +25,9 @@ five minutes; that endpoint is not a documented plugin API and may change.
 - **Network:** one request, `GET https://api.anthropic.com/api/oauth/usage`, at
   session start and then at most once every five minutes. It sends no body; the
   session's own credential is attached by Claude Code (`$.session.authorize`),
-  and the plugin never sees or stores it. Nothing is sent anywhere else.
+  and the plugin never sees or stores it. Nothing is sent anywhere else, and
+  `plugin.json` declares `api.anthropic.com` as its only host
+  (`network.hosts`).
 - **Data kept:** only the latest readings (the usage windows, Fable's weekly
   row and the current time), in Claude Code's state for the plugin
   (`usage.limits`, `usage.model`, `usage.now`). The plugin writes no files of

@@ -1,7 +1,7 @@
 {
   "name": "usage",
   "displayName": "Usage Band",
-  "version": "0.6.6",
+  "version": "0.6.7",
   "description": "A band above the prompt with the 5-hour (orange) and weekly (blue) usage bars and, while its promotion runs, Fable's own weekly bar (purple), each with the time left until it renews; drawn as an SVG on VS Code and Claude Code Desktop, as text on the terminal",
   "author": {
     "name": "l0cu"
@@ -10,5 +10,8 @@
   "repository": "https://github.com/l0cu/claude-mods",
   "supportUrl": "https://github.com/l0cu/claude-mods/issues",
   "license": "MIT",
+  "network": {
+    "hosts": ["api.anthropic.com"]
+  },
   "types": "./types/index.d.ts"
 }
