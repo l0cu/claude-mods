@@ -3,6 +3,11 @@
 Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
 (`usage-v<version>` up to 0.6.4).
 
+## usage 0.6.6
+
+- Display name "Usage Band". The plugin's `name` stays `usage`, so installs
+  (`usage@claude-mods`) are unchanged.
+
 ## usage 0.6.5
 
 - Manifest: homepage, repository and support links, for the plugin directory
