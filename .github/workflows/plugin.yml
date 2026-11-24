@@ -38,10 +38,9 @@ jobs:
           claude plugin validate --strict .
           claude plugin validate --strict "./${PLUGIN}"
 
-      # The plugin directory's own checks. Not --strict yet: the only warning left
-      # is the missing icon. Add --strict once usage/.claude-plugin/icon.png exists.
+      # The plugin directory's own checks (a subset: the developer portal runs more).
       - name: Validate against the plugin directory's checks
-        run: claude plugin validate --profile directory "./${PLUGIN}"
+        run: claude plugin validate --strict --profile directory "./${PLUGIN}"
 
       - name: Run the plugin's tests
         run: claude plugin test "${PLUGIN}"
