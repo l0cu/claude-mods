@@ -40,9 +40,6 @@ canviar.
 
 ## Instal·lació
 
-Aquest repositori és privat: cal que hi tinguis accés a GitHub i que el git del
-teu ordinador estigui configurat per clonar-lo (clau SSH o `gh auth login`).
-
 A Claude Code:
 
 ```
