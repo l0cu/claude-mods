@@ -3,6 +3,12 @@
 Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
 (`usage-v<version>` up to 0.6.4).
 
+## usage 0.6.8
+
+- The plugin folder has its own `README.md`, so the installed plugin's page in
+  Claude Code Desktop shows it instead of only the one-line description. No
+  change to the band.
+
 ## usage 0.6.7
 
 - The one network request is written at the call with its fixed address, and

@@ -65,7 +65,9 @@ so changes reach it only through a pull request.
 2. Raise `version` in `usage/.claude-plugin/plugin.json`: the last number for a
    fix (0.6.4 → 0.6.5), the middle one for a feature (0.6.x → 0.7.0). Claude
    Code only updates a plugin whose version changed.
-3. Add a `## usage <version>` section to `CHANGELOG.md`.
+3. Add a `## usage <version>` section to `CHANGELOG.md`. If what the plugin
+   does changed, update `usage/README.md` too: only `usage/` is installed, so
+   that is the README Claude Code shows for the installed plugin.
 4. Open a pull request. The `plugin` workflow validates the marketplace and the
    plugin (also against the plugin directory's checks), runs the tests, and
    fails if the plugin changed without a new version and its CHANGELOG entry.
