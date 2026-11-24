@@ -3,6 +3,12 @@
 Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
 (`usage-v<version>` up to 0.6.4).
 
+## usage 0.6.7
+
+- The one network request is written at the call with its fixed address, and
+  `plugin.json` declares its host (`network.hosts`: `api.anthropic.com`).
+  No change to the band.
+
 ## usage 0.6.6
 
 - Display name "Usage Band". The plugin's `name` stays `usage`, so installs

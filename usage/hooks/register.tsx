@@ -18,7 +18,7 @@ const nowAtom = atom({ plugin: 'usage', key: 'now' } as const, 0)
 // The engine hands a mod the 5-hour and the weekly window alone. A model's own
 // weekly window is a row of the account's usage endpoint, asked with the
 // session's credential, which stays with the engine ($.session.authorize).
-const USAGE_URL = 'https://api.anthropic.com/api/oauth/usage'
+// The address is written at the call itself, the one request this mod makes.
 // The endpoint answers 429 to a client that asks often.
 const ASK_EVERY_MS = 5 * 60_000
 const MODEL = /^fable\b/i
@@ -148,7 +148,7 @@ async function askModelWindow($: EngineInterface): Promise<ModelWindow | null | 
   const auth = await $.session.authorize()
   if (auth?.kind !== 'bearer') return undefined
 
-  const { ok, text } = await $.http.fetch(USAGE_URL, {
+  const { ok, text } = await $.http.fetch('https://api.anthropic.com/api/oauth/usage', {
     auth: auth.handle,
     headers: { 'anthropic-beta': 'oauth-2025-04-20' },
   })
