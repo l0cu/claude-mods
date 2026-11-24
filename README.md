@@ -35,9 +35,6 @@ five minutes; that endpoint is not a documented plugin API and may change.
 
 ## Install
 
-This repository is private: you need access to it on GitHub, and git on your
-computer set up to clone it (SSH key or `gh auth login`).
-
 In Claude Code:
 
 ```
