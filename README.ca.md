@@ -69,7 +69,10 @@ directori de plugins, així que els canvis només hi arriben amb un pull request
 2. Puja la `version` de `usage/.claude-plugin/plugin.json`: l'últim número per
    a un bugfix (0.6.4 → 0.6.5), el del mig per a una funcionalitat nova
    (0.6.x → 0.7.0). Claude Code només actualitza un plugin si la versió canvia.
-3. Afegeix una secció `## usage <versió>` al `CHANGELOG.md`.
+3. Afegeix una secció `## usage <versió>` al `CHANGELOG.md`. Si ha canviat el
+   que fa el plugin, actualitza també `usage/README.md`: només s'instal·la
+   `usage/`, i per tant és el README que Claude Code mostra del plugin
+   instal·lat.
 4. Obre un pull request. El workflow `plugin` valida el marketplace i el plugin
    (també amb les comprovacions del directori de plugins), passa els tests i
    falla si el plugin ha canviat sense una versió nova i la seva entrada al
