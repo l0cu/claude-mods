@@ -1,6 +1,14 @@
 # Changelog
 
-Versions of the `usage` plugin. Each release is tagged `usage-v<version>`.
+Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
+(`usage-v<version>` up to 0.6.4).
+
+## usage 0.6.5
+
+- Manifest: homepage, repository and support links, for the plugin directory
+  listing. No change to the band.
+- Icon (`.claude-plugin/icon.png`): the band's 5h and 7d bars under the word
+  USAGE.
 
 ## usage 0.6.4
 
