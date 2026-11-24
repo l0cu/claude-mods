@@ -1,8 +1,9 @@
 // The mechanical steps after a pull request is merged (.claude/skills/post-merge/SKILL.md):
 // updates main, deletes the local branch, prunes remote branches that are gone, and reports the
-// plugin version now on main and whether the workflow has tagged it, and where this machine's
-// Claude Code reads the marketplace from (Claude Code's known_marketplaces.json and
-// installed_plugins.json). Changes nothing on GitHub, nor in Claude Code's files.
+// plugin version now on main and whether the workflow has tagged it, and whether this machine's
+// Claude Code has the marketplace from the GitHub repository and at which commit (Claude Code's
+// known_marketplaces.json and installed_plugins.json). Changes nothing on GitHub, nor in Claude
+// Code's files.
 // Ported from l0cu/trito's scripts/post-merge.mjs, without its issue, board and Actions-minutes
 // steps: this repository has no issue board, and Actions are free on a public repository.
 // Usage: node scripts/post-merge.mjs [<branch>]   (default: the current branch)
@@ -85,20 +86,23 @@ const marketplaceName = JSON.parse(fs.readFileSync('.claude-plugin/marketplace.j
 const entry = readJson('known_marketplaces.json')?.[marketplaceName];
 const installed = readJson('installed_plugins.json')?.plugins?.[`${PLUGIN}@${marketplaceName}`]?.map((i) => i.version) ?? [];
 const installedNote = installed.length ? `installed: ${PLUGIN} ${[...new Set(installed)].join(', ')}` : `${PLUGIN} not installed`;
+// The plugin is installed from the GitHub repository, never from a local folder.
+const REPO = 'l0cu/claude-mods';
 const source = entry?.source ?? {};
-const samePath = (p) => p && path.resolve(p).toLowerCase() === path.resolve('.').toLowerCase();
+const fromRepo = source.source === 'github' && source.repo?.toLowerCase() === REPO;
 
 if (!entry) {
-  console.log(`Marketplace ${marketplaceName} is not added on this machine (${installedNote}).`);
-} else if (samePath(source.path) || samePath(entry.installLocation)) {
-  console.log(`Marketplace ${marketplaceName} is read from this folder (${installedNote}): /reload-plugins in each open session loads it.`);
+  console.log(`Marketplace ${marketplaceName} is not added on this machine (${installedNote}): /plugin marketplace add ${REPO}.`);
+} else if (!fromRepo) {
+  const from = source.repo ?? source.url ?? source.path ?? source.source ?? 'an unknown source';
+  console.log(`Marketplace ${marketplaceName} comes from ${from}, not from the repository ${REPO} (${installedNote}).`);
+  console.log(`Remove it (/plugin marketplace remove ${marketplaceName}) and add it from the repository: /plugin marketplace add ${REPO}.`);
 } else {
   const at = entry.installLocation && gitFails(['-C', entry.installLocation, 'rev-parse', 'HEAD']) === null
     ? git('-C', entry.installLocation, 'rev-parse', 'HEAD')
     : null;
   const current = at === git('rev-parse', 'HEAD');
-  const from = source.repo ?? source.url ?? source.path ?? source.source ?? 'elsewhere';
-  console.log(`Marketplace ${marketplaceName} comes from ${from}, its copy at ${at ? at.slice(0, 7) : 'an unknown commit'}${current ? ', the same as main' : ', not main yet'} (${installedNote}).`);
+  console.log(`Marketplace ${marketplaceName} comes from ${REPO}, its copy at ${at ? at.slice(0, 7) : 'an unknown commit'}${current ? ', the same as main' : ', not main yet'} (${installedNote}).`);
   if (!current) {
     console.log(entry.autoUpdate
       ? `Auto-update is on: its next pass brings it in, or /plugin marketplace update ${marketplaceName} does it now.`
