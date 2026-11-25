@@ -59,6 +59,41 @@ Després, `/reload-plugins` o obre una sessió nova.
 Després, `/reload-plugins` a cada sessió oberta. Si actives l'actualització
 automàtica del marketplace a `/plugin`, el primer pas es fa sol.
 
+### Actualitzar-lo demanant-ho a Claude
+
+El terminal, VS Code i Claude Code Desktop comparteixen una sola instal·lació (a
+`~/.claude`), així que n'hi ha prou d'actualitzar-lo una vegada des de
+qualsevol d'ells. Enganxa això en una sessió:
+
+```text
+Actualitza el plugin `usage` del marketplace `claude-mods` (GitHub:
+l0cu/claude-mods) a l'última versió de `main`, i comprova-ho. Fes servir només
+l'ordre `claude plugin` des del shell; no editis a mà res de `~/.claude`.
+
+1. Executa `claude --version`. Si `claude` no és al PATH, atura't i digues-me
+   que escrigui jo `/plugin marketplace update claude-mods` i després
+   `/reload-plugins`.
+2. Executa `claude plugin marketplace list --json` i comprova que hi ha
+   `claude-mods` amb `source: github` i `repo: l0cu/claude-mods`. Si no hi és,
+   afegeix-lo amb `claude plugin marketplace add l0cu/claude-mods`. Si hi és
+   però apunta a un altre lloc, atura't i explica-m'ho.
+3. Executa `claude plugin marketplace update claude-mods`.
+4. Llegeix `version` de
+   `<installLocation de claude-mods>/usage/.claude-plugin/plugin.json`: és la
+   versió que hi ha ara a GitHub.
+5. Executa `claude plugin list --json` i busca `usage@claude-mods`:
+   - si no hi és: `claude plugin install usage@claude-mods`
+   - si hi és amb una versió més antiga: `claude plugin update usage@claude-mods`
+   - si ja té la mateixa versió: no cal fer res.
+   Si alguna ordre et demana confirmar una ordre declarada pel marketplace, no
+   passis `-y`: ensenya-me-la i espera.
+6. Torna a executar `claude plugin list --json` i comprova que
+   `usage@claude-mods` té la versió del pas 4 i `enabled: true`.
+7. Respon-me amb la versió d'abans, la d'ara i la de GitHub. Recorda'm que faci
+   `/reload-plugins` a cada sessió oberta (terminal, VS Code i Desktop) o que
+   n'obri de noves: Claude no pot escriure aquesta ordre per mi.
+```
+
 ## Publicar una versió nova (mantenidors)
 
 `main` és el que reben els usuaris, des d'aquest marketplace i des del
