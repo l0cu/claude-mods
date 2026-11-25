@@ -55,6 +55,42 @@ Then `/reload-plugins`, or start a new session.
 Then `/reload-plugins` in each open session. Enabling auto-update for the
 marketplace in `/plugin` does the first step for you.
 
+### Update by asking Claude
+
+The terminal, VS Code and Claude Code Desktop share one install (under
+`~/.claude`), so updating it once from any of them is enough. Paste this into a
+session:
+
+```text
+Update the `usage` plugin from the `claude-mods` marketplace (GitHub:
+l0cu/claude-mods) to the latest version on `main`, and check it. Use only the
+`claude plugin` command from the shell; do not edit anything under `~/.claude`
+by hand.
+
+1. Run `claude --version`. If `claude` is not on the PATH, stop and tell me to
+   type `/plugin marketplace update claude-mods` and then `/reload-plugins`
+   myself.
+2. Run `claude plugin marketplace list --json` and check that `claude-mods` is
+   there with `source: github` and `repo: l0cu/claude-mods`. If it is missing,
+   add it with `claude plugin marketplace add l0cu/claude-mods`. If it points
+   somewhere else, stop and tell me.
+3. Run `claude plugin marketplace update claude-mods`.
+4. Read `version` from
+   `<claude-mods installLocation>/usage/.claude-plugin/plugin.json`: that is
+   the version on GitHub now.
+5. Run `claude plugin list --json` and look for `usage@claude-mods`:
+   - missing: `claude plugin install usage@claude-mods`
+   - an older version: `claude plugin update usage@claude-mods`
+   - the same version: nothing to do.
+   If a command asks you to confirm a marketplace-declared command, do not pass
+   `-y`: show it to me and wait.
+6. Run `claude plugin list --json` again and check that `usage@claude-mods` has
+   the version from step 4 and `enabled: true`.
+7. Tell me the version before, the version now and the version on GitHub.
+   Remind me to run `/reload-plugins` in each open session (terminal, VS Code
+   and Desktop), or to open new ones: Claude cannot type that command for me.
+```
+
 ## Releasing a new version (maintainers)
 
 `main` is what users get, from this marketplace and from the plugin directory,
