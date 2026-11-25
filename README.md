@@ -2,7 +2,13 @@
 
 **English** · [Català](README.ca.md)
 
-A Claude Code plugin marketplace with one plugin so far: **usage**.
+A Claude Code plugin marketplace with two plugins:
+
+- **[usage](#usage)**: a band above the prompt with your plan's usage.
+- **[e2e-progress](#e2e-progress)**: a yellow band above the prompt with the
+  progress of a Playwright run.
+
+Install either or both.
 
 ## usage
 
@@ -35,6 +41,25 @@ five minutes; that endpoint is not a documented plugin API and may change.
 - **Code:** one readable TypeScript file, `usage/hooks/register.tsx`.
   `claude plugin validate ./usage` lists every hook and call it makes.
 
+## e2e-progress
+
+A yellow band above the prompt with the progress of a Playwright run started
+from the session: the tests done of the total, failures, flaky and skipped
+tests, the time and the test running now. When the run ends the band says how
+and stays a minute; a run that has written nothing for two minutes turns grey,
+marked `stalled?`.
+
+At session start the plugin sets `PW_TEST_REPORTER` and `E2E_PROGRESS_FILE` on
+Claude Code's own process, so every command started from the session passes
+them to Playwright, which adds the plugin's reporter to the ones its config
+lists. No project file and no command is changed. `PW_TEST_REPORTER` is an
+internal Playwright variable, not a documented one (checked with Playwright
+1.64.1).
+
+It makes no network request, and writes one small progress file per session in
+its data folder. The details, and how to see a run from your own terminal, are
+in [e2e-progress/README.md](e2e-progress/README.md).
+
 ## Install
 
 In Claude Code:
@@ -42,9 +67,11 @@ In Claude Code:
 ```
 /plugin marketplace add l0cu/claude-mods
 /plugin install usage@claude-mods
+/plugin install e2e-progress@claude-mods
 ```
 
-Then `/reload-plugins`, or start a new session.
+Then `/reload-plugins`, or start a new session (e2e-progress sets its
+variables when a session starts).
 
 ## Update
 
@@ -96,19 +123,23 @@ by hand.
 `main` is what users get, from this marketplace and from the plugin directory,
 so changes reach it only through a pull request.
 
-1. On a branch, change the plugin under `usage/` and run its tests:
-   `claude plugin test usage`.
-2. Raise `version` in `usage/.claude-plugin/plugin.json`: the last number for a
-   fix (0.6.4 → 0.6.5), the middle one for a feature (0.6.x → 0.7.0). Claude
-   Code only updates a plugin whose version changed.
-3. Add a `## usage <version>` section to `CHANGELOG.md`. If what the plugin
-   does changed, update `usage/README.md` too: only `usage/` is installed, so
-   that is the README Claude Code shows for the installed plugin.
-4. Open a pull request. The `plugin` workflow validates the marketplace and the
-   plugin (also against the plugin directory's checks), runs the tests, and
-   fails if the plugin changed without a new version and its CHANGELOG entry.
-5. Merge it. The workflow tags the commit `usage--v<version>`, and the plugin
-   directory picks the new version up from `main` by itself.
+Each plugin lives in its own folder (`usage/`, `e2e-progress/`), the one its
+entry in `.claude-plugin/marketplace.json` names; a new plugin is added there.
+
+1. On a branch, change the plugin in its folder and run its tests:
+   `claude plugin test <plugin>`.
+2. Raise `version` in `<plugin>/.claude-plugin/plugin.json`: the last number
+   for a fix (0.6.4 → 0.6.5), the middle one for a feature (0.6.x → 0.7.0).
+   Claude Code only updates a plugin whose version changed.
+3. Add a `## <plugin> <version>` section to `CHANGELOG.md`. If what the plugin
+   does changed, update `<plugin>/README.md` too: only the plugin's folder is
+   installed, so that is the README Claude Code shows for the installed plugin.
+4. Open a pull request. The `plugin` workflow validates the marketplace and
+   every plugin it lists (also against the plugin directory's checks), runs
+   their tests, and fails if a plugin changed without a new version and its
+   CHANGELOG entry (a new plugin needs only its entry).
+5. Merge it. The workflow tags each new version `<plugin>--v<version>`, and the
+   plugin directory picks it up from `main` by itself.
 
 ## License
 

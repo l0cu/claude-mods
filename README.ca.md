@@ -2,8 +2,14 @@
 
 [English](README.md) · **Català**
 
-Un marketplace de plugins per a Claude Code, de moment amb un sol plugin:
-**usage**.
+Un marketplace de plugins per a Claude Code amb dos plugins:
+
+- **[usage](#usage)**: una banda a sobre del quadre de text amb el consum del
+  teu pla.
+- **[e2e-progress](#e2e-progress)**: una banda groga a sobre del quadre de text
+  amb el progrés d'una execució de Playwright.
+
+Pots instal·lar-ne un o tots dos.
 
 ## usage
 
@@ -39,6 +45,25 @@ canviar.
 - **Codi:** un sol fitxer TypeScript llegible, `usage/hooks/register.tsx`.
   `claude plugin validate ./usage` llista tots els hooks i les crides que fa.
 
+## e2e-progress
+
+Una banda groga a sobre del quadre de text amb el progrés d'una execució de
+Playwright engegada des de la sessió: les proves fetes del total, les fallades,
+les flaky i les saltades, el temps i la prova que corre ara. Quan l'execució
+acaba, la banda diu com ha acabat i s'hi queda un minut; si en dos minuts no
+s'ha escrit res, es torna grisa i diu `stalled?`.
+
+En obrir la sessió, el plugin posa `PW_TEST_REPORTER` i `E2E_PROGRESS_FILE` al
+procés de Claude Code, així que totes les ordres que s'engeguen des de la
+sessió les passen a Playwright, que afegeix el *reporter* del plugin als que
+diu la seva configuració. No canvia cap fitxer del projecte ni cap ordre.
+`PW_TEST_REPORTER` és una variable interna de Playwright, no documentada
+(comprovat amb Playwright 1.64.1).
+
+No fa cap petició de xarxa, i escriu un petit fitxer de progrés per sessió a la
+seva carpeta de dades. Els detalls, i com veure una execució del teu propi
+terminal, són a [e2e-progress/README.md](e2e-progress/README.md) (en anglès).
+
 ## Instal·lació
 
 A Claude Code:
@@ -46,9 +71,11 @@ A Claude Code:
 ```
 /plugin marketplace add l0cu/claude-mods
 /plugin install usage@claude-mods
+/plugin install e2e-progress@claude-mods
 ```
 
-Després, `/reload-plugins` o obre una sessió nova.
+Després, `/reload-plugins` o obre una sessió nova (e2e-progress posa les seves
+variables en obrir-se una sessió).
 
 ## Actualització
 
@@ -99,21 +126,24 @@ l'ordre `claude plugin` des del shell; no editis a mà res de `~/.claude`.
 `main` és el que reben els usuaris, des d'aquest marketplace i des del
 directori de plugins, així que els canvis només hi arriben amb un pull request.
 
-1. En una branca, fes el canvi al plugin, dins de `usage/`, i passa'n els
-   tests: `claude plugin test usage`.
-2. Puja la `version` de `usage/.claude-plugin/plugin.json`: l'últim número per
-   a un bugfix (0.6.4 → 0.6.5), el del mig per a una funcionalitat nova
+Cada plugin és a la seva carpeta (`usage/`, `e2e-progress/`), la que diu la
+seva entrada a `.claude-plugin/marketplace.json`; un plugin nou s'hi afegeix.
+
+1. En una branca, fes el canvi al plugin, dins de la seva carpeta, i passa'n
+   els tests: `claude plugin test <plugin>`.
+2. Puja la `version` de `<plugin>/.claude-plugin/plugin.json`: l'últim número
+   per a un bugfix (0.6.4 → 0.6.5), el del mig per a una funcionalitat nova
    (0.6.x → 0.7.0). Claude Code només actualitza un plugin si la versió canvia.
-3. Afegeix una secció `## usage <versió>` al `CHANGELOG.md`. Si ha canviat el
-   que fa el plugin, actualitza també `usage/README.md`: només s'instal·la
-   `usage/`, i per tant és el README que Claude Code mostra del plugin
-   instal·lat.
-4. Obre un pull request. El workflow `plugin` valida el marketplace i el plugin
-   (també amb les comprovacions del directori de plugins), passa els tests i
-   falla si el plugin ha canviat sense una versió nova i la seva entrada al
-   CHANGELOG.
-5. Fes-ne el merge. El workflow etiqueta el commit `usage--v<versió>`, i el
-   directori de plugins agafa la versió nova de `main` tot sol.
+3. Afegeix una secció `## <plugin> <versió>` al `CHANGELOG.md`. Si ha canviat
+   el que fa el plugin, actualitza també `<plugin>/README.md`: només
+   s'instal·la la carpeta del plugin, i per tant és el README que Claude Code
+   mostra del plugin instal·lat.
+4. Obre un pull request. El workflow `plugin` valida el marketplace i tots els
+   plugins que llista (també amb les comprovacions del directori de plugins),
+   en passa els tests i falla si un plugin ha canviat sense una versió nova i la
+   seva entrada al CHANGELOG (un plugin nou només necessita l'entrada).
+5. Fes-ne el merge. El workflow etiqueta cada versió nova
+   `<plugin>--v<versió>`, i el directori de plugins l'agafa de `main` tot sol.
 
 ## Llicència
 

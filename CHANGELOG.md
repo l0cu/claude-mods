@@ -1,7 +1,20 @@
 # Changelog
 
-Versions of the `usage` plugin. Each release is tagged `usage--v<version>`
-(`usage-v<version>` up to 0.6.4).
+Versions of the plugins in this marketplace, each under `## <plugin>
+<version>`. Each release is tagged `<plugin>--v<version>` (`usage-v<version>`
+up to usage 0.6.4).
+
+## e2e-progress 0.1.0
+
+- First version: a yellow band above the prompt with the progress of a
+  Playwright run started from the session (tests done of the total, failures,
+  flaky and skipped tests, the time and the test running), drawn as an SVG in
+  VS Code and Claude Code Desktop and as text with a bar in the terminal. It
+  stays a minute after the run ends, and turns grey as "stalled?" when the run
+  has written nothing for two minutes.
+- Its own Playwright reporter is added to the run through `PW_TEST_REPORTER`,
+  which the plugin sets with `E2E_PROGRESS_FILE` for the whole session at its
+  start; no project file and no command is changed.
 
 ## usage 0.6.8
 

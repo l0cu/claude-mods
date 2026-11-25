@@ -1,7 +1,7 @@
 // The mechanical steps after a pull request is merged (.claude/skills/post-merge/SKILL.md):
 // updates main, deletes the local branch, prunes remote branches that are gone, and reports the
-// plugin version on main in the GitHub repository (read with gh, not from this checkout) and
-// whether the workflow has tagged it, and whether this machine's
+// version of each plugin the marketplace lists on main in the GitHub repository (read with gh,
+// not from this checkout) and whether the workflow has tagged it, and whether this machine's
 // Claude Code has the marketplace from the GitHub repository and at which commit (Claude Code's
 // known_marketplaces.json and installed_plugins.json). Changes nothing on GitHub, nor in Claude
 // Code's files.
@@ -14,8 +14,6 @@ import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-
-const PLUGIN = 'usage';
 
 function fail(message) {
   console.error(message);
@@ -63,8 +61,9 @@ if (gitFails(['rev-parse', '--verify', '--quiet', `refs/heads/${branch}`]) !== n
   console.log(`Deleted branch ${branch}.`);
 }
 
-// 2. The plugin on main in the GitHub repository, which is what users install, and its tag (the
-// workflow adds it a minute or so after the merge). Read from GitHub, not from this checkout.
+// 2. The plugins on main in the GitHub repository, which is what users install, and their tags
+// (the workflow adds them a minute or so after the merge). Read from GitHub, not from this
+// checkout: the marketplace's list of plugins, then each one's manifest.
 
 // The plugin is installed from the GitHub repository, never from a local folder.
 const REPO = 'l0cu/claude-mods';
@@ -73,23 +72,33 @@ function gh(...args) {
   return execFileSync('gh', ['api', ...args], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] }).trim();
 }
 
+function ghJson(file, ref) {
+  const content = gh(`repos/${REPO}/contents/${file}?ref=${ref}`, '--jq', '.content');
+  return JSON.parse(Buffer.from(content, 'base64').toString('utf8'));
+}
+
 let mainSha;
-let version;
+let plugins;
 try {
   mainSha = gh(`repos/${REPO}/commits/main`, '--jq', '.sha');
-  const manifest = Buffer.from(gh(`repos/${REPO}/contents/${PLUGIN}/.claude-plugin/plugin.json?ref=${mainSha}`, '--jq', '.content'), 'base64');
-  ({ version } = JSON.parse(manifest.toString('utf8')));
+  plugins = ghJson('.claude-plugin/marketplace.json', mainSha).plugins.map((plugin) => {
+    const folder = plugin.source.replace(/^\.\//, '');
+    return { name: plugin.name, version: ghJson(`${folder}/.claude-plugin/plugin.json`, mainSha).version };
+  });
 } catch (err) {
   fail(`Could not read main from GitHub (${REPO}):\n${(err.stderr || err.message).trim()}`);
 }
-const tag = `${PLUGIN}--v${version}`;
-let tagged = true;
-try {
-  gh(`repos/${REPO}/git/ref/tags/${tag}`, '--silent');
-} catch {
-  tagged = false;
+console.log(`\nGitHub ${REPO} main is at ${mainSha.slice(0, 7)}:`);
+for (const { name, version } of plugins) {
+  const tag = `${name}--v${version}`;
+  let tagged = true;
+  try {
+    gh(`repos/${REPO}/git/ref/tags/${tag}`, '--silent');
+  } catch {
+    tagged = false;
+  }
+  console.log(`  ${name} ${version}; tag ${tag}: ${tagged ? 'there' : 'not yet (the workflow adds it after the merge)'}`);
 }
-console.log(`\nGitHub ${REPO} main is at ${mainSha.slice(0, 7)}: ${PLUGIN} ${version}; tag ${tag}: ${tagged ? 'there' : 'not yet (the workflow adds it after the merge)'}`);
 
 // 3. Where this machine's Claude Code reads the marketplace from, and what it has installed.
 
@@ -105,8 +114,13 @@ function readJson(file) {
 
 const marketplaceName = JSON.parse(fs.readFileSync('.claude-plugin/marketplace.json', 'utf8')).name;
 const entry = readJson('known_marketplaces.json')?.[marketplaceName];
-const installed = readJson('installed_plugins.json')?.plugins?.[`${PLUGIN}@${marketplaceName}`]?.map((i) => i.version) ?? [];
-const installedNote = installed.length ? `installed: ${PLUGIN} ${[...new Set(installed)].join(', ')}` : `${PLUGIN} not installed`;
+const installedPlugins = readJson('installed_plugins.json')?.plugins ?? {};
+const installedNote = plugins
+  .map(({ name }) => {
+    const versions = [...new Set((installedPlugins[`${name}@${marketplaceName}`] ?? []).map((i) => i.version))];
+    return versions.length ? `installed: ${name} ${versions.join(', ')}` : `${name} not installed`;
+  })
+  .join('; ');
 const source = entry?.source ?? {};
 const fromRepo = source.source === 'github' && source.repo?.toLowerCase() === REPO;
 

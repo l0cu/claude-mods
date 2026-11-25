@@ -1,8 +1,12 @@
 # Checks every pull request, and tags each new version once it reaches main.
 #
 # main is what the plugin directory and the claude-mods marketplace serve, so a
-# pull request that changes the plugin must also raise its version and add it to
+# pull request that changes a plugin must also raise its version and add it to
 # CHANGELOG.md. After the merge, the directory picks the new commit up by itself.
+#
+# The plugins are the ones .claude-plugin/marketplace.json lists, each in the
+# folder its `source` names. One `check` job goes through them all: it is the
+# check main's protection requires, under that name.
 name: plugin
 
 on:
@@ -14,7 +18,6 @@ env:
   # The Claude Code release the checks below were written against. Raise it on purpose.
   CLAUDE_CODE_VERSION: 2.1.329
   DISABLE_AUTOUPDATER: 1
-  PLUGIN: usage
 
 jobs:
   check:
@@ -33,40 +36,64 @@ jobs:
       - name: Install Claude Code
         run: npm install --global "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
 
-      - name: Validate the marketplace and the plugin
+      - name: The plugins the marketplace lists
+        run: |
+          plugins=$(jq -r '.plugins[].source | ltrimstr("./")' .claude-plugin/marketplace.json | tr '\n' ' ')
+          echo "PLUGINS=${plugins}" >> "$GITHUB_ENV"
+          echo "Plugins: ${plugins}"
+
+      - name: Validate the marketplace and each plugin
         run: |
           claude plugin validate --strict .
-          claude plugin validate --strict "./${PLUGIN}"
+          for plugin in $PLUGINS; do
+            claude plugin validate --strict "./${plugin}"
+          done
 
       # The plugin directory's own checks (a subset: the developer portal runs more).
-      - name: Validate against the plugin directory's checks
-        run: claude plugin validate --strict --profile directory "./${PLUGIN}"
+      - name: Validate each plugin against the plugin directory's checks
+        run: |
+          for plugin in $PLUGINS; do
+            claude plugin validate --strict --profile directory "./${plugin}"
+          done
 
-      - name: Run the plugin's tests
-        run: claude plugin test "${PLUGIN}"
+      - name: Run each plugin's tests
+        run: |
+          for plugin in $PLUGINS; do
+            claude plugin test "${plugin}"
+          done
 
-      - name: A change to the plugin raises its version and is in CHANGELOG.md
+      - name: A changed plugin raises its version and is in CHANGELOG.md
         if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
         run: |
-          manifest="${PLUGIN}/.claude-plugin/plugin.json"
-          if git diff --quiet "$BASE" HEAD -- "${PLUGIN}/"; then
-            echo "The plugin is unchanged: no new version needed."
-            exit 0
-          fi
-          old=$(git show "$BASE:$manifest" | jq -r .version)
-          new=$(jq -r .version "$manifest")
-          highest=$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n1)
-          if [ "$new" = "$old" ] || [ "$highest" != "$new" ]; then
-            echo "::error file=$manifest::The plugin changed, so raise its version above $old (it is $new)."
-            exit 1
-          fi
-          if ! grep -Fxq "## ${PLUGIN} ${new}" CHANGELOG.md; then
-            echo "::error file=CHANGELOG.md::Add a '## ${PLUGIN} ${new}' section for this version."
-            exit 1
-          fi
-          echo "Version $old -> $new, in CHANGELOG.md."
+          failed=0
+          for plugin in $PLUGINS; do
+            manifest="${plugin}/.claude-plugin/plugin.json"
+            if git diff --quiet "$BASE" HEAD -- "${plugin}/"; then
+              echo "${plugin} is unchanged: no new version needed."
+              continue
+            fi
+            new=$(jq -r .version "$manifest")
+            # A plugin the base does not have yet is new: any version, and its entry.
+            if git cat-file -e "$BASE:$manifest" 2>/dev/null; then
+              old=$(git show "$BASE:$manifest" | jq -r .version)
+              highest=$(printf '%s\n%s\n' "$old" "$new" | sort -V | tail -n1)
+              if [ "$new" = "$old" ] || [ "$highest" != "$new" ]; then
+                echo "::error file=$manifest::${plugin} changed, so raise its version above $old (it is $new)."
+                failed=1
+                continue
+              fi
+              echo "${plugin}: version $old -> $new."
+            else
+              echo "${plugin} is new, at version $new."
+            fi
+            if ! grep -Fxq "## ${plugin} ${new}" CHANGELOG.md; then
+              echo "::error file=CHANGELOG.md::Add a '## ${plugin} ${new}' section for this version."
+              failed=1
+            fi
+          done
+          exit "$failed"
 
   tag:
     needs: check
@@ -79,17 +106,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      # The {name}--v{version} form that `claude plugin tag` uses.
-      - name: Tag the version if it is new
+      # The {name}--v{version} form that `claude plugin tag` uses, one per plugin.
+      - name: Tag each plugin's version if it is new
         run: |
-          version=$(jq -r .version "${PLUGIN}/.claude-plugin/plugin.json")
-          tag="${PLUGIN}--v${version}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "${tag} already exists."
-            exit 0
-          fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git tag -a "${tag}" -m "${PLUGIN} ${version}"
-          git push origin "${tag}"
-          echo "Tagged ${tag}."
+          for plugin in $(jq -r '.plugins[].source | ltrimstr("./")' .claude-plugin/marketplace.json); do
+            version=$(jq -r .version "${plugin}/.claude-plugin/plugin.json")
+            tag="${plugin}--v${version}"
+            if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+              echo "${tag} already exists."
+              continue
+            fi
+            git tag -a "${tag}" -m "${plugin} ${version}"
+            git push origin "${tag}"
+            echo "Tagged ${tag}."
+          done
