@@ -14,12 +14,8 @@ export type Progress = {
   updatedAt: string | null
 }
 
-// The run the band follows: the file its reporter writes, and when the command
-// that starts it was handed on. A file older than that is an earlier run's.
-export type Watch = { file: string; armedAt: number }
-
 declare module 'claude-code' {
   interface PluginState {
-    'e2e-progress': { progress: Progress | null; now: number; watch: Watch | null }
+    'e2e-progress': { progress: Progress | null; now: number }
   }
 }

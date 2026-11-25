@@ -1,27 +1,18 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { Progress, Watch } from '../types'
+import type { Progress } from '../types'
 
-// The run as its reporter last wrote it, the clock its times are drawn from,
-// and the run being followed. In $.state, so a reload keeps following it.
+// The run as its reporter last wrote it, and the clock its times are drawn from.
 const progressAtom = atom({ plugin: 'e2e-progress', key: 'progress' } as const, null)
 const nowAtom = atom({ plugin: 'e2e-progress', key: 'now' } as const, 0)
-const watchAtom = atom({ plugin: 'e2e-progress', key: 'watch' } as const, null)
-
-// A command that runs tests. `playwright install` and the like start no run.
-const TESTS = /\bplaywright\b|\be2e\b|\b(npm|pnpm|yarn|bun)\s+(run\s+)?test\b/i
-const NOT_A_RUN = /\bplaywright\s+(install|install-deps|codegen|show-report|show-trace|merge-reports|--version|-V)\b/i
 
 // The band stays this long after a run ends, then leaves.
 const SHOW_DONE_MS = 60_000
 // A run whose reporter has written nothing for this long is drawn as stalled,
-// and past the second figure it is no longer followed.
+// and past the second figure it is no longer drawn.
 const STALLED_MS = 2 * 60_000
 const ABANDON_MS = 15 * 60_000
-// A command that has started no run by then (it ran other tests, or none) is
-// no longer followed.
-const NO_RUN_MS = 10 * 60_000
 
 const YELLOW = '#F2C230'
 const RED = '#E5484D'
@@ -139,132 +130,77 @@ const bandAlt = (progress: Progress, now: number) =>
     .map(part => part.text)
     .join(' · ')
 
-// The two variables in front of the command, in the shell's own words: the
-// run inherits them, Playwright adds the reporter to its config's.
-const quoteBash = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`
-const quotePowerShell = (s: string) => `'${s.replace(/'/g, "''")}'`
+// The session's progress file, once the two variables are set.
+let file: string | undefined
 
-function withVariables(tool: 'Bash' | 'PowerShell', command: string, reporter: string, file: string) {
-  if (tool === 'PowerShell') {
-    return `$env:PW_TEST_REPORTER=${quotePowerShell(reporter)}; $env:E2E_PROGRESS_FILE=${quotePowerShell(file)}; ${command}`
-  }
-
-  return `export PW_TEST_REPORTER=${quoteBash(reporter)} E2E_PROGRESS_FILE=${quoteBash(file)}; ${command}`
-}
-
-const isTestCommand = (command: string) =>
-  TESTS.test(command) && !NOT_A_RUN.test(command) && !command.includes('PW_TEST_REPORTER')
-
-async function arm($: EngineInterface): Promise<{ reporter: string; file: string }> {
+// The two variables go on Claude Code's own process, once, at session start:
+// every command started after (a Bash or PowerShell call, a background task)
+// hands them to Playwright, which adds the reporter to its config's. No command
+// is rewritten, so the permission check and auto mode see it as written. A
+// PW_TEST_REPORTER the person set already is left alone, and nothing followed.
+async function setUp($: EngineInterface) {
   const env = await $.process.hookEnv()
   const root = $.plugin.root
   const sep = root.includes('\\') ? '\\' : '/'
-  const data = env.CLAUDE_PLUGIN_DATA
-  const session = env.CLAUDE_CODE_SESSION_ID || 'session'
-  const file = `${data}${sep}progress-${session}.json`
-  const armedAt = await $.clock.now()
+  const reporter = `${root}${sep}hooks${sep}progress-reporter.mjs`
+  const path = `${env.CLAUDE_PLUGIN_DATA}${sep}progress-${env.CLAUDE_CODE_SESSION_ID || 'session'}.json`
 
-  await update($, watchAtom, () => ({ file, armedAt }))
-  await update($, progressAtom, () => null)
-  await update($, nowAtom, () => armedAt)
-
-  return { reporter: `${root}${sep}hooks${sep}progress-reporter.mjs`, file }
+  const own = await $.env.get('PW_TEST_REPORTER')
+  if (own !== undefined && own !== '' && own !== reporter) return
+  const set = [await $.env.set('PW_TEST_REPORTER', reporter), await $.env.set('E2E_PROGRESS_FILE', path)]
+  if (set.every(result => result.deny === undefined)) file = path
 }
 
-async function stop($: EngineInterface) {
-  await update($, watchAtom, () => null)
-  await update($, progressAtom, () => null)
-}
-
-// The file as the reporter last wrote it for this run: undefined while there
-// is none, or only an earlier run's.
-async function readRun($: EngineInterface, watch: Watch): Promise<Progress | undefined> {
-  const text = await $.fs.read(watch.file).catch(() => undefined)
+// The file as the reporter last wrote it: undefined while there is none.
+async function readProgress($: EngineInterface, path: string): Promise<Progress | undefined> {
+  const text = await $.fs.read(path).catch(() => undefined)
   if (text === undefined) return undefined
   try {
     const progress = JSON.parse(text) as Progress
-    if (progress?.version !== 1) return undefined
-    // The reporter starts after the command is handed on; a second's grace for
-    // clocks read a moment apart.
-    if (Date.parse(progress.startedAt) < watch.armedAt - 1000) return undefined
 
-    return progress
+    return progress?.version === 1 ? progress : undefined
   } catch {
     // Half a file cannot be read (a rename is atomic), but a hand-made one can.
     return undefined
   }
 }
 
-// One look at the followed run: the band's values moved on, or the run let go.
-async function poll($: EngineInterface) {
-  const watch = await read($, watchAtom)
-  if (watch === null) return
-  const now = await $.clock.now()
-  const progress = await readRun($, watch)
-
-  if (progress === undefined) {
-    if (now - watch.armedAt > NO_RUN_MS) await stop($)
-
-    return
-  }
+// A run is drawn while it goes on, and for a minute after it ends.
+const isShown = (progress: Progress, now: number) => {
   const updated = Date.parse(progress.updatedAt ?? progress.startedAt)
-  const isOver =
-    (progress.status === 'done' && now - updated > SHOW_DONE_MS) ||
-    (progress.status === 'running' && now - updated > ABANDON_MS)
-  if (isOver) {
-    await stop($)
+
+  return now - updated <= (progress.status === 'done' ? SHOW_DONE_MS : ABANDON_MS)
+}
+
+// One look at the file: the band's values moved on, or the band gone.
+async function poll($: EngineInterface) {
+  if (file === undefined) return
+  const progress = await readProgress($, file)
+  const now = await $.clock.now()
+  const last = await read($, progressAtom)
+
+  if (progress === undefined || !isShown(progress, now)) {
+    if (last !== null) await update($, progressAtom, () => null)
 
     return
   }
-
-  const last = await read($, progressAtom)
   if (last?.updatedAt !== progress.updatedAt || last?.status !== progress.status) {
     await update($, progressAtom, () => progress)
   }
   await update($, nowAtom, () => now)
 }
 
-// After the command: refused, or over in the foreground without a run of its
-// own, there is nothing to follow; otherwise one look now, not a second later.
-async function settle($: EngineInterface, isDenied: boolean, isInBackground: boolean) {
-  if (isDenied) return stop($)
-  if (isInBackground) return
-  const watch = await read($, watchAtom)
-  if (watch !== null && (await readRun($, watch)) === undefined) return stop($)
-  await poll($)
-}
-
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     const started = await next(e)
-    // Every second; a look costs one state read while no run is followed.
+    await setUp($)
+    // Every second: a file read, and a redraw only while a run is drawn.
     $.clock.every(1000, () => {
       void poll($).catch(() => {})
     })
 
     return started
   })
-
-  // A hook that fails leaves the command as it was: the tests still run, unfollowed.
-  on('tool.call', { tool: 'Bash' }, async ($, e, next) => {
-    if (!isTestCommand(e.command)) return next(e)
-
-    const { reporter, file } = await arm($)
-    const ran = await next({ ...e, command: withVariables('Bash', e.command, reporter, file) })
-    await settle($, ran.deny !== undefined, e.run_in_background === true)
-
-    return ran
-  }).catch(($, e, next) => next(e))
-
-  on('tool.call', { tool: 'PowerShell' }, async ($, e, next) => {
-    if (!isTestCommand(e.command)) return next(e)
-
-    const { reporter, file } = await arm($)
-    const ran = await next({ ...e, command: withVariables('PowerShell', e.command, reporter, file) })
-    await settle($, ran.deny !== undefined, e.run_in_background === true)
-
-    return ran
-  }).catch(($, e, next) => next(e))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)
