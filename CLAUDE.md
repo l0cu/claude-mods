@@ -1,7 +1,7 @@
 # claude-mods
 
-A Claude Code plugin marketplace (`.claude-plugin/marketplace.json`) with one plugin, `usage`,
-under `usage/`. What the plugin does, and how a version is released, is in
+A Claude Code plugin marketplace (`.claude-plugin/marketplace.json`) with two plugins, each in
+its own folder: `usage/` and `e2e-progress/`. What they do, and how a version is released, is in
 [README.md](README.md).
 
 Talk to the user in Catalan. Code, commits, pull requests and the English docs stay in English.
@@ -10,8 +10,9 @@ Talk to the user in Catalan. Code, commits, pull requests and the English docs s
 
 - `main` is protected: every change reaches it through a pull request whose `check` job
   passes. Work on a branch from an up-to-date `main`.
-- A change under `usage/` raises `version` in `usage/.claude-plugin/plugin.json` and adds a
-  `## usage <version>` section to `CHANGELOG.md`; CI fails the pull request otherwise.
+- A change in a plugin's folder raises `version` in `<plugin>/.claude-plugin/plugin.json` and
+  adds a `## <plugin> <version>` section to `CHANGELOG.md`; CI fails the pull request otherwise.
+  A new plugin is listed in `marketplace.json` and needs only its CHANGELOG section.
 - This repository commits as GitHub's noreply address (`user.email` in `.git/config`); never
   change it, nor the global git configuration.
 - **Watch each pull request once it is open**, without being asked:

@@ -4,13 +4,18 @@
     "name": "l0cu"
   },
   "metadata": {
-    "description": "Mods for Claude Code: changes to its interface, such as a usage band above the prompt"
+    "description": "Mods for Claude Code: changes to its interface, such as a usage band and a Playwright progress band above the prompt"
   },
   "plugins": [
     {
       "name": "usage",
       "source": "./usage",
       "description": "A band above the prompt with the 5-hour (orange) and weekly (blue) usage bars and, while its promotion runs, Fable's own weekly bar (purple), each with the time left until it renews; drawn as an SVG on VS Code and Claude Code Desktop, as text on the terminal"
+    },
+    {
+      "name": "e2e-progress",
+      "source": "./e2e-progress",
+      "description": "A yellow band above the prompt with the progress of a Playwright run started from the session: tests done of the total, failures, flaky tests, time and the test running; its own reporter is added to the run, no project file changes"
     }
   ]
 }
