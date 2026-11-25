@@ -4,6 +4,11 @@ Versions of the plugins in this marketplace, each under `## <plugin>
 <version>`. Each release is tagged `<plugin>--v<version>` (`usage-v<version>`
 up to usage 0.6.4).
 
+## e2e-progress 0.1.1
+
+- The test running is on a line of its own under the bar, and wraps: a long
+  name was cut at the band's edge, since an SVG cannot measure its text.
+
 ## e2e-progress 0.1.0
 
 - First version: a yellow band above the prompt with the progress of a
