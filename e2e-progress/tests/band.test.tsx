@@ -103,30 +103,54 @@ test('a run in progress draws its count, failures, flaky tests, time and the tes
   w.file = JSON.stringify(RUN)
   await clock.advance(1000)
 
-  const words = 'E2E · 10/40 · ✘ 1 · 1 flaky · 1m 01s · files.spec.mjs › copies a file'
   for (const surface of ['vscode', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
     const { alt, source } = await svgOf(ui)
-    expect(alt).toBe(words)
+    expect(alt).toBe('E2E · 10/40 · ✘ 1 · 1 flaky · 1m 01s')
     expect(source).toContain('width="25%"')
     expect(source).toContain('#F2C230')
     expect(source).toContain('#E5484D')
+    // The test running is not in the SVG, which cannot measure it, but a Text
+    // of its own under it, wrapped rather than cut at the band's edge.
+    expect(source).not.toContain('copies a file')
+    const current = await ui.find({ type: 'Text', text: /copies a file/ })
+    expect(current?.text).toBe('files.spec.mjs › copies a file')
+    expect(current?.props.wrap).toBe('wrap')
     await ui.unmount()
   }
 
   const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect((await terminal.find({ type: 'Text', text: '10/40' }))?.text).toBe('10/40')
   expect((await terminal.find({ type: 'Text', text: '✘ 1' }))?.props.color).toBe('#E5484D')
-  expect((await terminal.find({ type: 'Text', text: /copies a file/ }))?.text).toBe('files.spec.mjs › copies a file')
+  const running = await terminal.find({ type: 'Text', text: /copies a file/ })
+  expect(running?.text).toBe('files.spec.mjs › copies a file')
+  expect(running?.props.wrap).toBe('wrap')
   await terminal.unmount()
 
   // The next write moves the band on.
   w.file = JSON.stringify({ ...RUN, done: 30, passed: 28, updatedAt: at(90_000), current: 'find.spec.mjs › finds' })
   await clock.advance(30_000)
   const later = await $.ui.mount({ ...BAND, surface: 'vscode' })
-  expect((await svgOf(later)).alt).toBe('E2E · 30/40 · ✘ 1 · 1 flaky · 1m 31s · find.spec.mjs › finds')
+  expect((await svgOf(later)).alt).toBe('E2E · 30/40 · ✘ 1 · 1 flaky · 1m 31s')
   expect((await svgOf(later)).source).toContain('width="75%"')
+  expect((await later.find({ type: 'Text', text: /finds/ }))?.text).toBe('find.spec.mjs › finds')
   await later.unmount()
+})
+
+test('a long test name is drawn whole, however wide the band', async ($, on) => {
+  const clock = mock.clock(on, { now: START + 60_000 })
+  const w = world(on)
+  await $.session.start({ cwd: '/', surface: 'vscode', isInteractive: true })
+  const long =
+    "archive-content.spec.mjs › una bomba zip › extreure-la no atura l'app, i cancel·lar-la a mitja entrada no deixa res, ni cap fitxer a mitges a la carpeta de destí"
+  w.file = JSON.stringify({ ...RUN, current: long })
+  await clock.advance(1000)
+
+  for (const surface of ['vscode', 'desktop', 'terminal'] as const) {
+    const ui = await $.ui.mount({ ...BAND, surface })
+    expect((await ui.find({ type: 'Text', text: /bomba zip/ }))?.text).toBe(long)
+    await ui.unmount()
+  }
 })
 
 test('the desktop SVG inks its words by the colour scheme, VS Code by currentColor', async ($, on) => {

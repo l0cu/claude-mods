@@ -32,7 +32,6 @@ const INK_STYLE =
   `<style>.ink{fill:${INK_LIGHT}}` +
   `@media (prefers-color-scheme: dark){.ink{fill:${INK_DARK}}}</style>`
 const DESKTOP_FONT = `system-ui, -apple-system, &#39;Segoe UI&#39;, sans-serif`
-const CURRENT_MAX = 120
 
 type Phase = 'running' | 'stalled' | 'done'
 
@@ -74,7 +73,7 @@ const RESULT: Record<string, string> = {
 
 type Part = { text: string; tone?: 'strong' | 'dim' | 'red' }
 
-// The band's words, in the order drawn: the same on every surface.
+// The band's figures, in the order drawn: the same on every surface.
 function partsOf(progress: Progress, now: number): Part[] {
   const phase = phaseOf(progress, now)
   const parts: Part[] = [{ text: 'E2E', tone: 'strong' }]
@@ -88,13 +87,15 @@ function partsOf(progress: Progress, now: number): Part[] {
   if (progress.skipped > 0) parts.push({ text: `${progress.skipped} skipped`, tone: 'dim' })
   parts.push({ text: elapsed(progress, now), tone: 'dim' })
   if (phase === 'stalled') parts.push({ text: 'stalled?', tone: 'dim' })
-  if (phase === 'running' && progress.current) {
-    const current = progress.current.length > CURRENT_MAX ? `${progress.current.slice(0, CURRENT_MAX - 1)}…` : progress.current
-    parts.push({ text: current, tone: 'dim' })
-  }
 
   return parts
 }
+
+// The test running, on a line of its own under the bar: an SVG cannot measure
+// its text, so on the figures' row a long name was cut at the band's edge.
+// As a Text it wraps, and is read whole on every surface.
+const currentOf = (progress: Progress, now: number) =>
+  phaseOf(progress, now) === 'running' && progress.current ? progress.current : null
 
 const xml = (text: string) => text.replace(/[&<>"']/g, c => `&#${c.charCodeAt(0)};`)
 
@@ -208,9 +209,10 @@ export const register: Register = on => {
     const progress = await read($, progressAtom)
     if (progress === null) return next(e)
     const now = await read($, nowAtom)
+    const current = currentOf(progress, now)
 
     if (e.surface === 'vscode' || e.surface === 'desktop') {
-      const { Box, Svg } = $.ui.resolve(e)
+      const { Box, Svg, Text } = $.ui.resolve(e)
 
       return (
         <Box flexDirection="column" width="100%">
@@ -219,12 +221,17 @@ export const register: Register = on => {
             alt={bandAlt(progress, now)}
             height={SVG_HEIGHT}
           />
+          {current ? (
+            <Text size="footnote" dimColor wrap="wrap">
+              {current}
+            </Text>
+          ) : null}
         </Box>
       )
     }
 
-    // The terminal (and the mobile apps): the words above a bar of glyphs, as
-    // `usage` draws its meters.
+    // The terminal (and the mobile apps): the figures above a bar of glyphs,
+    // as `usage` draws its meters, and the test running under it.
     const { Box, Text } = $.ui.resolve(e)
     const done = Math.round(share(progress))
     const color = phaseOf(progress, now) === 'stalled' ? GREY : YELLOW
@@ -255,6 +262,11 @@ export const register: Register = on => {
             <Text color={TRACK}>{LINE}</Text>
           </Box>
         </Box>
+        {current ? (
+          <Text size="footnote" dimColor wrap="wrap">
+            {current}
+          </Text>
+        ) : null}
       </Box>
     )
   })
