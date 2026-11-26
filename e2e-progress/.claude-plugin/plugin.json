@@ -1,7 +1,7 @@
 {
   "name": "e2e-progress",
   "displayName": "E2E Progress Band",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A yellow band above the prompt with the progress of a Playwright run started from the session: tests done of the total, failures, flaky tests, time and the test running; its own reporter is added to the run, no project file changes",
   "author": {
     "name": "l0cu"

@@ -45,7 +45,7 @@ five minutes; that endpoint is not a documented plugin API and may change.
 
 A yellow band above the prompt with the progress of a Playwright run started
 from the session: the tests done of the total, failures, flaky and skipped
-tests, the time and the test running now. When the run ends the band says how
+tests, the share done, the time and the test running now. When the run ends the band says how
 and stays a minute; a run that has written nothing for two minutes turns grey,
 marked `stalled?`.
 

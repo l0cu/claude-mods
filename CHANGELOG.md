@@ -4,6 +4,11 @@ Versions of the plugins in this marketplace, each under `## <plugin>
 <version>`. Each release is tagged `<plugin>--v<version>` (`usage-v<version>`
 up to usage 0.6.4).
 
+## e2e-progress 0.1.2
+
+- The share done, as a whole number rounded down (`25%`), left of the time,
+  as `usage` writes its meters: 100% only once every test is done.
+
 ## e2e-progress 0.1.1
 
 - The test running is on a line of its own under the bar, and wraps: a long
