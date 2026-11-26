@@ -73,6 +73,56 @@ In Claude Code:
 Then `/reload-plugins`, or start a new session (e2e-progress sets its
 variables when a session starts).
 
+### Install e2e-progress by asking Claude
+
+Paste this into a session on any machine. Claude cannot type `/reload-plugins`,
+so it asks you to, then checks whether the session took the plugin or a new
+one is needed.
+
+```text
+Install the `e2e-progress` plugin from the `claude-mods` marketplace (GitHub:
+l0cu/claude-mods), the latest version on `main`, and check that it works in
+this session. Use only the `claude plugin` command from the shell; do not edit
+anything under `~/.claude` by hand.
+
+1. Run `claude --version`. If `claude` is not on the PATH, stop and tell me to
+   type these myself, then `/reload-plugins`:
+     /plugin marketplace add l0cu/claude-mods
+     /plugin install e2e-progress@claude-mods
+2. Run `claude plugin marketplace list --json` and look for `claude-mods`:
+   - missing: `claude plugin marketplace add l0cu/claude-mods`
+   - there with `source: github` and `repo: l0cu/claude-mods`: go on
+   - pointing anywhere else: stop and tell me.
+3. Run `claude plugin marketplace update claude-mods`.
+4. Read `version` from
+   `<claude-mods installLocation>/e2e-progress/.claude-plugin/plugin.json`:
+   that is the version on GitHub now.
+5. Run `claude plugin list --json` and look for `e2e-progress@claude-mods`:
+   - missing: `claude plugin install e2e-progress@claude-mods`
+   - an older version: `claude plugin update e2e-progress@claude-mods`
+   - the same version: nothing to install.
+   If a command asks you to confirm a marketplace-declared command, do not pass
+   `-y`: show it to me and wait.
+6. Run `claude plugin list --json` again and check that
+   `e2e-progress@claude-mods` has the version from step 4 and `enabled: true`.
+7. Tell me the version before, the version now and the version on GitHub.
+   Then ask me to type `/reload-plugins` in this session and reply "done":
+   you cannot type that command yourself. Wait for my reply.
+8. When I reply, run a new shell command that prints the environment variables
+   `PW_TEST_REPORTER` and `E2E_PROGRESS_FILE`:
+   - both set, `PW_TEST_REPORTER` ending in
+     `e2e-progress/<version from step 4>/hooks/progress-reporter.mjs` (either
+     slash) and `E2E_PROGRESS_FILE` ending in `progress-<this session's id>.json`:
+     tell me the plugin is active here, and that a Playwright run I start from
+     this session (`npx playwright test`, `npm run e2e`…) shows a yellow band
+     above the prompt.
+   - not set, or pointing at another version: tell me the plugin is installed
+     but this session has not taken it, and that I must open a new session
+     (terminal, VS Code or Desktop) for it to be active.
+   Do not set those variables yourself: the band reads the file only when the
+   plugin set them.
+```
+
 ## Update
 
 ```

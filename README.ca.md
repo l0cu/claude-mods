@@ -77,6 +77,58 @@ A Claude Code:
 Després, `/reload-plugins` o obre una sessió nova (e2e-progress posa les seves
 variables en obrir-se una sessió).
 
+### Instal·lar e2e-progress demanant-ho a Claude
+
+Enganxa això en una sessió de qualsevol màquina. Claude no pot escriure
+`/reload-plugins`, així que te'l demana i després comprova si la sessió ha
+agafat el plugin o en cal una de nova.
+
+```text
+Instal·la el plugin `e2e-progress` del marketplace `claude-mods` (GitHub:
+l0cu/claude-mods), l'última versió de `main`, i comprova que funciona en
+aquesta sessió. Fes servir només l'ordre `claude plugin` des del shell; no
+editis a mà res de `~/.claude`.
+
+1. Executa `claude --version`. Si `claude` no és al PATH, atura't i digues-me
+   que escrigui jo això i després `/reload-plugins`:
+     /plugin marketplace add l0cu/claude-mods
+     /plugin install e2e-progress@claude-mods
+2. Executa `claude plugin marketplace list --json` i busca `claude-mods`:
+   - si no hi és: `claude plugin marketplace add l0cu/claude-mods`
+   - si hi és amb `source: github` i `repo: l0cu/claude-mods`: continua
+   - si apunta a un altre lloc: atura't i explica-m'ho.
+3. Executa `claude plugin marketplace update claude-mods`.
+4. Llegeix `version` de
+   `<installLocation de claude-mods>/e2e-progress/.claude-plugin/plugin.json`:
+   és la versió que hi ha ara a GitHub.
+5. Executa `claude plugin list --json` i busca `e2e-progress@claude-mods`:
+   - si no hi és: `claude plugin install e2e-progress@claude-mods`
+   - si hi és amb una versió més antiga:
+     `claude plugin update e2e-progress@claude-mods`
+   - si ja té la mateixa versió: no cal instal·lar res.
+   Si alguna ordre et demana confirmar una ordre declarada pel marketplace, no
+   passis `-y`: ensenya-me-la i espera.
+6. Torna a executar `claude plugin list --json` i comprova que
+   `e2e-progress@claude-mods` té la versió del pas 4 i `enabled: true`.
+7. Respon-me amb la versió d'abans, la d'ara i la de GitHub. Després demana'm
+   que escrigui `/reload-plugins` en aquesta sessió i que et contesti "fet":
+   tu no pots escriure aquesta ordre. Espera la meva resposta.
+8. Quan et contesti, executa una ordre de shell nova que mostri les variables
+   d'entorn `PW_TEST_REPORTER` i `E2E_PROGRESS_FILE`:
+   - si hi són totes dues, `PW_TEST_REPORTER` acaba en
+     `e2e-progress/<versió del pas 4>/hooks/progress-reporter.mjs` (amb
+     qualsevol barra) i `E2E_PROGRESS_FILE` acaba en
+     `progress-<id d'aquesta sessió>.json`: digues-me que el plugin ja és actiu
+     aquí, i que una execució de Playwright que comenci des d'aquesta sessió
+     (`npx playwright test`, `npm run e2e`…) mostra una banda groga sobre el
+     prompt.
+   - si no hi són, o apunten a una altra versió: digues-me que el plugin està
+     instal·lat però aquesta sessió no l'ha agafat, i que he d'obrir una sessió
+     nova (terminal, VS Code o Desktop) perquè sigui actiu.
+   No posis tu aquestes variables: la banda només llegeix el fitxer quan les ha
+   posades el plugin.
+```
+
 ## Actualització
 
 ```
