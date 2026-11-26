@@ -106,7 +106,7 @@ test('a run in progress draws its count, failures, flaky tests, time and the tes
   for (const surface of ['vscode', 'desktop'] as const) {
     const ui = await $.ui.mount({ ...BAND, surface })
     const { alt, source } = await svgOf(ui)
-    expect(alt).toBe('E2E · 10/40 · ✘ 1 · 1 flaky · 1m 01s')
+    expect(alt).toBe('E2E · 10/40 · ✘ 1 · 1 flaky · 25% · 1m 01s')
     expect(source).toContain('width="25%"')
     expect(source).toContain('#F2C230')
     expect(source).toContain('#E5484D')
@@ -122,6 +122,9 @@ test('a run in progress draws its count, failures, flaky tests, time and the tes
   const terminal = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect((await terminal.find({ type: 'Text', text: '10/40' }))?.text).toBe('10/40')
   expect((await terminal.find({ type: 'Text', text: '✘ 1' }))?.props.color).toBe('#E5484D')
+  const percent = await terminal.find({ type: 'Text', text: '25%' })
+  expect(percent?.text).toBe('25%')
+  expect(percent?.props.dimColor).toBe(false)
   const running = await terminal.find({ type: 'Text', text: /copies a file/ })
   expect(running?.text).toBe('files.spec.mjs › copies a file')
   expect(running?.props.wrap).toBe('wrap')
@@ -131,10 +134,30 @@ test('a run in progress draws its count, failures, flaky tests, time and the tes
   w.file = JSON.stringify({ ...RUN, done: 30, passed: 28, updatedAt: at(90_000), current: 'find.spec.mjs › finds' })
   await clock.advance(30_000)
   const later = await $.ui.mount({ ...BAND, surface: 'vscode' })
-  expect((await svgOf(later)).alt).toBe('E2E · 30/40 · ✘ 1 · 1 flaky · 1m 31s')
+  expect((await svgOf(later)).alt).toBe('E2E · 30/40 · ✘ 1 · 1 flaky · 75% · 1m 31s')
   expect((await svgOf(later)).source).toContain('width="75%"')
   expect((await later.find({ type: 'Text', text: /finds/ }))?.text).toBe('find.spec.mjs › finds')
   await later.unmount()
+})
+
+test('the share done is rounded down: 100% only once every test is done', async ($, on) => {
+  const clock = mock.clock(on, { now: START + 60_000 })
+  const w = world(on)
+  await $.session.start({ cwd: '/', surface: 'vscode', isInteractive: true })
+
+  // Each write a second after the one before, as the reporter's are: the band
+  // moves on when `updatedAt` does.
+  for (const [i, [done, total, shown]] of ([
+    [199, 200, '99%'],
+    [1, 3, '33%'],
+    [0, 0, '0%'],
+  ] as const).entries()) {
+    w.file = JSON.stringify({ ...RUN, done, total, failed: 0, flaky: 0, updatedAt: at(61_000 + 1000 * i) })
+    await clock.advance(1000)
+    const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
+    expect((await svgOf(ui)).alt).toContain(` · ${shown} · `)
+    await ui.unmount()
+  }
 })
 
 test('a long test name is drawn whole, however wide the band', async ($, on) => {
@@ -194,7 +217,7 @@ test('a finished run stays a minute with its result, then the band leaves', asyn
   const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
   const { alt, source } = await svgOf(ui)
   // The time is the run's own, not the clock's since.
-  expect(alt).toBe('E2E · ✔ passed · 40/40 · 4 skipped · 2m 00s')
+  expect(alt).toBe('E2E · ✔ passed · 40/40 · 4 skipped · 100% · 2m 00s')
   expect(source).toContain('width="100%" height="4" rx="2" fill="#F2C230"')
   await ui.unmount()
 
@@ -227,7 +250,7 @@ test('a silent reporter is drawn as stalled, in grey, and let go after 15 minute
 
   const ui = await $.ui.mount({ ...BAND, surface: 'vscode' })
   const { alt, source } = await svgOf(ui)
-  expect(alt).toBe('E2E · 10/40 · ✘ 1 · 1 flaky · 3m 01s · stalled?')
+  expect(alt).toBe('E2E · 10/40 · ✘ 1 · 1 flaky · 25% · 3m 01s · stalled?')
   expect(source).toContain('#8A8A8A')
   expect(source).not.toContain('#F2C230')
   await ui.unmount()

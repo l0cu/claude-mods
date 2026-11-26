@@ -5,7 +5,8 @@ from the session:
 
 - the tests done of the total, over a yellow bar;
 - failures (✘, in red), flaky and skipped tests;
-- the time the run has taken, and the test running now.
+- the share done (`25%`, rounded down), the time the run has taken, and the
+  test running now.
 
 When the run ends the band says how (`✔ passed`, `✘ failed`, `✘ timed out`,
 `✘ interrupted`) and stays a minute. A run whose reporter has written nothing

@@ -49,7 +49,7 @@ canviar.
 
 Una banda groga a sobre del quadre de text amb el progrés d'una execució de
 Playwright engegada des de la sessió: les proves fetes del total, les fallades,
-les flaky i les saltades, el temps i la prova que corre ara. Quan l'execució
+les flaky i les saltades, el percentatge fet, el temps i la prova que corre ara. Quan l'execució
 acaba, la banda diu com ha acabat i s'hi queda un minut; si en dos minuts no
 s'ha escrit res, es torna grisa i diu `stalled?`.
 

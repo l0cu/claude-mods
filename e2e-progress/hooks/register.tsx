@@ -63,6 +63,10 @@ const elapsed = (progress: Progress, now: number) => {
 const share = (progress: Progress) =>
   progress.total > 0 ? Math.round((10000 * Math.min(progress.done, progress.total)) / progress.total) / 100 : 0
 
+// The share done as a whole number, as `usage` writes its meters: rounded
+// down, so 100% is only a run with every test done.
+const percent = (progress: Progress) => `${Math.floor(share(progress))}%`
+
 // Playwright's own words for how a run ended.
 const RESULT: Record<string, string> = {
   passed: '✔ passed',
@@ -85,6 +89,7 @@ function partsOf(progress: Progress, now: number): Part[] {
   if (progress.failed > 0) parts.push({ text: `✘ ${progress.failed}`, tone: 'red' })
   if (progress.flaky > 0) parts.push({ text: `${progress.flaky} flaky` })
   if (progress.skipped > 0) parts.push({ text: `${progress.skipped} skipped`, tone: 'dim' })
+  parts.push({ text: percent(progress) })
   parts.push({ text: elapsed(progress, now), tone: 'dim' })
   if (phase === 'stalled') parts.push({ text: 'stalled?', tone: 'dim' })
 
