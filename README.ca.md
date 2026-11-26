@@ -2,16 +2,61 @@
 
 [English](README.md) · **Català**
 
-Un marketplace de plugins per a Claude Code amb dos plugins:
+Un marketplace de plugins per a Claude Code amb **dos plugins**. Cadascun
+s'instal·la per separat: pots instal·lar-ne un o tots dos.
 
-- **[usage](#usage)**: una banda a sobre del quadre de text amb el consum del
-  teu pla.
-- **[e2e-progress](#e2e-progress)**: una banda groga a sobre del quadre de text
-  amb el progrés d'una execució de Playwright.
+| Plugin | Què mostra | Instal·lació |
+| --- | --- | --- |
+| **[usage](#usage)** | Una banda a sobre del quadre de text amb el consum del teu pla: les finestres de 5 hores i setmanal, i la de Fable | `/plugin install usage@claude-mods` |
+| **[e2e-progress](#e2e-progress)** | Una banda groga a sobre del quadre de text amb el progrés d'una execució de Playwright | `/plugin install e2e-progress@claude-mods` |
 
-Pots instal·lar-ne un o tots dos.
+- [Inici ràpid](#inici-ràpid): afegir el marketplace, instal·lar, actualitzar
+- [usage](#usage): què mostra, què llegeix i què envia, instal·lar-lo o
+  actualitzar-lo demanant-ho a Claude
+- [e2e-progress](#e2e-progress): què mostra, com funciona, instal·lar-lo
+  demanant-ho a Claude
+- [Publicar una versió nova (mantenidors)](#publicar-una-versió-nova-mantenidors)
+
+## Inici ràpid
+
+### Instal·lació
+
+A Claude Code, afegeix el marketplace una vegada i després instal·la els
+plugins que vulguis:
+
+```
+/plugin marketplace add l0cu/claude-mods
+/plugin install usage@claude-mods
+/plugin install e2e-progress@claude-mods
+```
+
+Després, `/reload-plugins` o obre una sessió nova (e2e-progress posa les seves
+variables en obrir-se una sessió).
+
+Cada plugin té també un prompt que pots enganxar en una sessió perquè Claude
+l'instal·li i el comprovi: mira'ls a [usage](#usage) i a
+[e2e-progress](#e2e-progress).
+
+### Actualització
+
+Una sola ordre actualitza tots dos plugins:
+
+```
+/plugin marketplace update claude-mods
+```
+
+Després, `/reload-plugins` a cada sessió oberta. Si actives l'actualització
+automàtica del marketplace a `/plugin`, el primer pas es fa sol.
+
+El terminal, VS Code i Claude Code Desktop comparteixen una sola instal·lació
+(a `~/.claude`), així que n'hi ha prou d'instal·lar o actualitzar una vegada des
+de qualsevol d'ells.
+
+---
 
 ## usage
+
+`usage@claude-mods` · carpeta [`usage/`](usage/) · [CHANGELOG](CHANGELOG.md)
 
 Una banda a sobre del quadre de text amb el consum del teu pla:
 
@@ -45,13 +90,119 @@ canviar.
 - **Codi:** un sol fitxer TypeScript llegible, `usage/hooks/register.tsx`.
   `claude plugin validate ./usage` llista tots els hooks i les crides que fa.
 
+### Instal·lar usage des de GitHub demanant-ho a Claude
+
+Enganxa això en una sessió de qualsevol màquina. Si `usage` està instal·lat
+des d'un altre lloc (una carpeta local, un altre marketplace o repositori),
+Claude el desinstal·la i el torna a instal·lar des de GitHub; abans de treure
+un marketplace t'ho pregunta.
+
+<details>
+<summary>Prompt: instal·lar <code>usage</code> des de GitHub</summary>
+
+```text
+Assegura't que el plugin `usage` està instal·lat des del marketplace
+`claude-mods` de GitHub (l0cu/claude-mods) i, si ve de qualsevol altre lloc,
+desinstal·la'l i instal·la'l des d'allà. Fes servir només l'ordre
+`claude plugin` des del shell; no editis a mà res de `~/.claude`.
+
+1. Executa `claude --version`. Si `claude` no és al PATH, atura't i digues-me
+   que escrigui jo això i després `/reload-plugins`:
+     /plugin marketplace add l0cu/claude-mods
+     /plugin install usage@claude-mods
+2. Executa `claude plugin list --json` i `claude plugin marketplace list --json`.
+   Apunta't cada plugin instal·lat amb `id` `usage@<marketplace>`, amb la seva
+   `version` i el seu `scope`, i l'origen de cadascun d'aquests marketplaces.
+   Una entrada apunta a GitHub quan el seu marketplace és `claude-mods` i
+   aquest marketplace té `source: github` i `repo: l0cu/claude-mods`.
+3. Si l'única entrada és `usage@claude-mods` i apunta a GitHub, digues-me que
+   ja està instal·lat des de GitHub, amb la seva versió, i atura't: no canviïs
+   res. Si no n'hi ha cap, ves al pas 6.
+4. Si el marketplace `claude-mods` existeix però no apunta a GitHub (una
+   carpeta local, un altre repositori, una URL), ensenya'm el seu origen i
+   tots els altres plugins instal·lats des d'ell (`<nom>@claude-mods`), i
+   pregunta'm abans de canviar res: s'ha de treure i tornar a afegir des de
+   GitHub. Espera la meva resposta; si et dic que no, atura't.
+5. Desinstal·la cada entrada que no apunti a GitHub:
+   `claude plugin uninstall usage@<marketplace> --scope <el seu scope>`. Si el
+   seu scope no és `user`, `project` ni `local`, o l'ordre falla, ensenya'm
+   l'entrada i l'error i atura't.
+6. Si `claude-mods` no apunta a GitHub, executa
+   `claude plugin marketplace remove claude-mods` (només si al pas 4 t'he dit
+   que sí). Si ara no hi és, executa
+   `claude plugin marketplace add l0cu/claude-mods`. Després executa
+   `claude plugin marketplace update claude-mods`.
+7. Executa `claude plugin install usage@claude-mods`. Si alguna ordre et
+   demana confirmar una ordre declarada pel marketplace, no passis `-y`:
+   ensenya-me-la i espera.
+8. Torna a executar les dues llistes i comprova: `claude-mods` té
+   `source: github` i `repo: l0cu/claude-mods`; l'única entrada `usage@…` és
+   `usage@claude-mods`, amb `enabled: true` i la `version` de
+   `<installLocation de claude-mods>/usage/.claude-plugin/plugin.json`.
+9. Respon-me amb el que has trobat, el que has desinstal·lat o tret, i la
+   versió instal·lada ara. Si el pas 4 ha llistat altres plugins, digues-me
+   que els torni a instal·lar des de GitHub. Recorda'm que faci
+   `/reload-plugins` a cada sessió oberta (terminal, VS Code i Desktop) o que
+   n'obri de noves, perquè Claude no pot escriure aquesta ordre, i que
+   comprovi a `/plugin` que l'actualització automàtica de `claude-mods` està
+   activada.
+```
+
+</details>
+
+### Actualitzar usage demanant-ho a Claude
+
+Enganxa això en una sessió; n'hi ha prou amb una, des de qualsevol lloc.
+
+<details>
+<summary>Prompt: actualitzar <code>usage</code></summary>
+
+```text
+Actualitza el plugin `usage` del marketplace `claude-mods` (GitHub:
+l0cu/claude-mods) a l'última versió de `main`, i comprova-ho. Fes servir només
+l'ordre `claude plugin` des del shell; no editis a mà res de `~/.claude`.
+
+1. Executa `claude --version`. Si `claude` no és al PATH, atura't i digues-me
+   que escrigui jo `/plugin marketplace update claude-mods` i després
+   `/reload-plugins`.
+2. Executa `claude plugin marketplace list --json` i comprova que hi ha
+   `claude-mods` amb `source: github` i `repo: l0cu/claude-mods`. Si no hi és,
+   afegeix-lo amb `claude plugin marketplace add l0cu/claude-mods`. Si hi és
+   però apunta a un altre lloc, atura't i explica-m'ho.
+3. Executa `claude plugin marketplace update claude-mods`.
+4. Llegeix `version` de
+   `<installLocation de claude-mods>/usage/.claude-plugin/plugin.json`: és la
+   versió que hi ha ara a GitHub.
+5. Executa `claude plugin list --json` i busca `usage@claude-mods`:
+   - si no hi és: `claude plugin install usage@claude-mods`
+   - si hi és amb una versió més antiga: `claude plugin update usage@claude-mods`
+   - si ja té la mateixa versió: no cal fer res.
+   Si alguna ordre et demana confirmar una ordre declarada pel marketplace, no
+   passis `-y`: ensenya-me-la i espera.
+6. Torna a executar `claude plugin list --json` i comprova que
+   `usage@claude-mods` té la versió del pas 4 i `enabled: true`.
+7. Respon-me amb la versió d'abans, la d'ara i la de GitHub. Recorda'm que faci
+   `/reload-plugins` a cada sessió oberta (terminal, VS Code i Desktop) o que
+   n'obri de noves: Claude no pot escriure aquesta ordre per mi.
+```
+
+</details>
+
+---
+
 ## e2e-progress
+
+`e2e-progress@claude-mods` · carpeta [`e2e-progress/`](e2e-progress/) ·
+[CHANGELOG](CHANGELOG.md) · [README complet](e2e-progress/README.md) (en
+anglès)
 
 Una banda groga a sobre del quadre de text amb el progrés d'una execució de
 Playwright engegada des de la sessió: les proves fetes del total, les fallades,
-les flaky i les saltades, el percentatge fet, el temps i la prova que corre ara. Quan l'execució
-acaba, la banda diu com ha acabat i s'hi queda un minut; si en dos minuts no
-s'ha escrit res, es torna grisa i diu `stalled?`.
+les flaky i les saltades, el percentatge fet, el temps i la prova que corre
+ara. Quan l'execució acaba, la banda diu com ha acabat i s'hi queda un minut;
+si en dos minuts no s'ha escrit res, es torna grisa i diu `stalled?`.
+
+### Com funciona
 
 En obrir la sessió, el plugin posa `PW_TEST_REPORTER` i `E2E_PROGRESS_FILE` al
 procés de Claude Code, així que totes les ordres que s'engeguen des de la
@@ -64,24 +215,14 @@ No fa cap petició de xarxa, i escriu un petit fitxer de progrés per sessió a 
 seva carpeta de dades. Els detalls, i com veure una execució del teu propi
 terminal, són a [e2e-progress/README.md](e2e-progress/README.md) (en anglès).
 
-## Instal·lació
-
-A Claude Code:
-
-```
-/plugin marketplace add l0cu/claude-mods
-/plugin install usage@claude-mods
-/plugin install e2e-progress@claude-mods
-```
-
-Després, `/reload-plugins` o obre una sessió nova (e2e-progress posa les seves
-variables en obrir-se una sessió).
-
 ### Instal·lar e2e-progress demanant-ho a Claude
 
 Enganxa això en una sessió de qualsevol màquina. Claude no pot escriure
 `/reload-plugins`, així que te'l demana i després comprova si la sessió ha
 agafat el plugin o en cal una de nova.
+
+<details>
+<summary>Prompt: instal·lar <code>e2e-progress</code></summary>
 
 ```text
 Instal·la el plugin `e2e-progress` del marketplace `claude-mods` (GitHub:
@@ -129,49 +270,9 @@ editis a mà res de `~/.claude`.
    posades el plugin.
 ```
 
-## Actualització
+</details>
 
-```
-/plugin marketplace update claude-mods
-```
-
-Després, `/reload-plugins` a cada sessió oberta. Si actives l'actualització
-automàtica del marketplace a `/plugin`, el primer pas es fa sol.
-
-### Actualitzar-lo demanant-ho a Claude
-
-El terminal, VS Code i Claude Code Desktop comparteixen una sola instal·lació (a
-`~/.claude`), així que n'hi ha prou d'actualitzar-lo una vegada des de
-qualsevol d'ells. Enganxa això en una sessió:
-
-```text
-Actualitza el plugin `usage` del marketplace `claude-mods` (GitHub:
-l0cu/claude-mods) a l'última versió de `main`, i comprova-ho. Fes servir només
-l'ordre `claude plugin` des del shell; no editis a mà res de `~/.claude`.
-
-1. Executa `claude --version`. Si `claude` no és al PATH, atura't i digues-me
-   que escrigui jo `/plugin marketplace update claude-mods` i després
-   `/reload-plugins`.
-2. Executa `claude plugin marketplace list --json` i comprova que hi ha
-   `claude-mods` amb `source: github` i `repo: l0cu/claude-mods`. Si no hi és,
-   afegeix-lo amb `claude plugin marketplace add l0cu/claude-mods`. Si hi és
-   però apunta a un altre lloc, atura't i explica-m'ho.
-3. Executa `claude plugin marketplace update claude-mods`.
-4. Llegeix `version` de
-   `<installLocation de claude-mods>/usage/.claude-plugin/plugin.json`: és la
-   versió que hi ha ara a GitHub.
-5. Executa `claude plugin list --json` i busca `usage@claude-mods`:
-   - si no hi és: `claude plugin install usage@claude-mods`
-   - si hi és amb una versió més antiga: `claude plugin update usage@claude-mods`
-   - si ja té la mateixa versió: no cal fer res.
-   Si alguna ordre et demana confirmar una ordre declarada pel marketplace, no
-   passis `-y`: ensenya-me-la i espera.
-6. Torna a executar `claude plugin list --json` i comprova que
-   `usage@claude-mods` té la versió del pas 4 i `enabled: true`.
-7. Respon-me amb la versió d'abans, la d'ara i la de GitHub. Recorda'm que faci
-   `/reload-plugins` a cada sessió oberta (terminal, VS Code i Desktop) o que
-   n'obri de noves: Claude no pot escriure aquesta ordre per mi.
-```
+---
 
 ## Publicar una versió nova (mantenidors)
 
